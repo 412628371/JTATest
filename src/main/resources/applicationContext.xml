@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	default-lazy-init="true"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd
+		http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa-1.8.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+	<description>Spring公共配置 </description>
+
+	<!-- 使用annotation 自动注册bean, 并保证@Required、@Autowired的属性被注入 -->
+	<context:component-scan base-package="com.panyk">
+		<context:exclude-filter type="annotation"
+			expression="org.springframework.stereotype.Controller" />
+		<context:exclude-filter type="annotation"
+			expression="org.springframework.web.bind.annotation.ControllerAdvice" />
+	</context:component-scan>
+	 
+	<!-- 读取属性文件 --> 
+	<context:property-placeholder ignore-unresolvable="true" location="classpath*:/application.properties" />
+
+    <bean id="abstractXADataSource" class="com.atomikos.jdbc.AtomikosDataSourceBean" init-method="init" destroy-method="close" abstract="true">
+        <property name="xaDataSourceClassName" value="${jdbc.xaDataSourceClassName}"/>
+        <property name="poolSize" value="3" />
+        <property name="minPoolSize" value="2"/>
+        <property name="maxPoolSize" value="5"/>
+        <!--获取连接失败重新获等待最大时间，在这个时间内如果有可用连接，将返回-->
+        <property name="borrowConnectionTimeout" value="60"/>
+        <!--最大获取数据时间，如果不设置这个值，Atomikos使用默认的5分钟，那么在处理大批量数据读取的时候，
+        一旦超过5分钟，就会抛出类似 Resultset is close 的错误.-->
+        <property name="reapTimeout" value="200"/>
+        <!--最大闲置时间，超过最小连接池连接的连接将将关闭-->
+        <property name="maxIdleTime" value="20"/>
+        <!--连接回收时间-->
+        <property name="maintenanceInterval" value="20"/>
+        <!--java数据库连接池，最大可等待获取datasouce的时间-->
+        <property name="loginTimeout" value="60"/>
+        <property name="testQuery" value="${mysql.jdbc.validationQuery}"/>
+    </bean>
+    
+	
+	<bean id="test1DataSource" parent="abstractXADataSource">
+        <property name="uniqueResourceName" value="test1" />
+        <property name="xaProperties">
+            <props>
+                <prop key="driverClassName">${jdbc.driverClassName}</prop>
+                <prop key="url">${test1.jdbc.url}</prop>
+                <prop key="password">${test1.jdbc.password}</prop>
+                <!--  <prop key="user">${jdbc.username}</prop> --> <!-- mysql -->
+                <prop key="username">${test1.jdbc.username}</prop>   <!-- durid -->
+                <prop key="initialSize">0</prop>
+                <prop key="maxActive">5</prop> <!-- 若不配置则代码执行"{dataSource-1} inited"此处停止  -->
+                <prop key="minIdle">0</prop>
+                <prop key="maxWait">60000</prop>
+                <prop key="validationQuery">${test1.jdbc.validationQuery}</prop>
+                <prop key="testOnBorrow">false</prop>
+                <prop key="testOnReturn">false</prop>
+                <prop key="testWhileIdle">true</prop>
+                <prop key="removeAbandoned">false</prop>
+                <prop key="removeAbandonedTimeout">1800</prop>
+                <prop key="logAbandoned">true</prop>
+                <prop key="filters">mergeStat</prop>
+            </props>
+        </property>
+    </bean>
+	<bean id="test2DataSource" parent="abstractXADataSource">
+        <property name="uniqueResourceName" value="test2" />
+        <property name="xaProperties">
+            <props>
+                <prop key="driverClassName">${jdbc.driverClassName}</prop>
+                <prop key="url">${test2.jdbc.url}</prop>
+                <prop key="password">${test2.jdbc.password}</prop>
+                <!--  <prop key="user">${jdbc.username}</prop> --> <!-- mysql -->
+                <prop key="username">${test2.jdbc.username}</prop>   <!-- durid -->
+                <prop key="initialSize">0</prop>
+                <prop key="maxActive">5</prop> <!-- 若不配置则代码执行"{dataSource-1} inited"此处停止  -->
+                <prop key="minIdle">0</prop>
+                <prop key="maxWait">60000</prop>
+                <prop key="validationQuery">${test2.jdbc.validationQuery}</prop>
+                <prop key="testOnBorrow">false</prop>
+                <prop key="testOnReturn">false</prop>
+                <prop key="testWhileIdle">true</prop>
+                <prop key="removeAbandoned">false</prop>
+                <prop key="removeAbandonedTimeout">1800</prop>
+                <prop key="logAbandoned">true</prop>
+                <prop key="filters">mergeStat</prop>
+            </props>
+        </property>
+    </bean>
+
+	<bean id="atomikosUserTransactionManager" class="com.atomikos.icatch.jta.UserTransactionManager">
+		<description>UserTransactionManager</description>
+		<property name="forceShutdown" value="true" />
+	</bean>
+
+	<bean id="atomikosUserTransaction" class="com.atomikos.icatch.jta.UserTransactionImp">
+		<property name="transactionTimeout" value="300" />
+	</bean>
+    <!-- spring 事务管理器 -->
+    <bean id="transactionManager" class="org.springframework.transaction.jta.JtaTransactionManager">
+        <property name="transactionManager" ref="atomikosUserTransactionManager" />
+        <property name="userTransaction" ref="atomikosUserTransaction" />
+        <!-- 必须设置，否则程序出现异常 JtaTransactionManager does not support custom isolation levels by default -->
+        <property name="allowCustomIsolationLevels" value="true"/>
+    </bean>
+    
+	<bean id="jdbcTemplateA" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="test1DataSource"/>
+	</bean>
+	<bean id="jdbcTemplateB" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="test2DataSource"/>
+	</bean>  
+    <!-- 注解方式配置事务 -->
+<!--     <tx:annotation-driven transaction-manager="transactionManager"/> -->
+    <!-- 拦截器方式配置事务 -->
+    <tx:advice id="transactionAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="save*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+            <tx:method name="add*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+            <tx:method name="insert*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+            <tx:method name="delete*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+            <tx:method name="update*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+            <tx:method name="*RequiredNew" propagation="REQUIRES_NEW" rollback-for="java.lang.Exception"/>
+            <tx:method name="*" read-only="true"/>
+        </tx:attributes>
+    </tx:advice>
+    <aop:config>
+        <!--定义在service包和所有子包里的任意类的任意方法的执行 -->
+        <aop:pointcut id="transactionPointcut"
+                      expression="execution(* com.panyk..*.impl.*Service*.*(..))"/>
+        <aop:advisor pointcut-ref="transactionPointcut" advice-ref="transactionAdvice"/>
+    </aop:config>
+</beans>
